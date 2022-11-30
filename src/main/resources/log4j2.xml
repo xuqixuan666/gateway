@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <Properties>
+        <!-- ===== 读取 SprigBoot 参数 ===== -->
+        <property name="appName" value="${spring:spring.application.name}"/>
+        <!-- 配置日志文件路径 -->
+        <property name="lOG_PATH" value="logs/gateway"/>
+        <!-- 配置日志归档文件路径 -->
+        <property name="lOG_HISTORY_PATH" value="${lOG_PATH}/history"/>
+        <!-- 配置日志格式 -->
+        <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5p %logger.%M[%L] : %m%n" />
+    </Properties>
+    <Appenders>
+        <!--这个输出控制台的配置-->
+        <Console name="Console" target="SYSTEM_OUT">
+            <!--控制台只输出level及以上级别的信息（onMatch），其他的直接拒绝（onMismatch）-->
+            <ThresholdFilter level="DEBUG" onMatch="ACCEPT" onMismatch="DENY" />
+            <PatternLayout pattern="${LOG_PATTERN}" charset="UTF-8"/>
+        </Console>
+
+        <RollingRandomAccessFile name="FILE-INFO" fileName="${lOG_PATH}/info.log"
+                                 filePattern="${lOG_HISTORY_PATH}/info-%d{yyyyMMdd}-%i.log.gz">
+            <ThresholdFilter level="INFO" onMatch="ACCEPT" onMismatch="DENY" />
+            <PatternLayout pattern="${LOG_PATTERN}" charset="UTF-8" />
+            <!-- 日志滚动策略-->
+            <Policies>
+                <!--每天生成一个文件，时间依据filePattern的时间格式最后一位配置，这里是dd，所以是每天生成一个文件-->
+                <TimeBasedTriggeringPolicy  interval="1" modulate="true"/>
+                <!-- SizeBasedTriggeringPolicy :文件大小滚动策略-->
+                <SizeBasedTriggeringPolicy size="200MB"/>
+            </Policies>
+            <!--每天最多7个日志文件，日志量超过7，则滚动覆盖-->
+            <DefaultRolloverStrategy max="7" >
+                <Delete basePath="${lOG_HISTORY_PATH}" maxDepth="1">
+                    <IfFileName glob="info-*.gz" />
+                    <!-- 日志保留60天的 -->
+                    <IfLastModified age="60d" />
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingRandomAccessFile>
+
+        <RollingRandomAccessFile name="FILE-ERROR" fileName="${lOG_PATH}/error.log"
+                                 filePattern="${lOG_HISTORY_PATH}/error-%d{yyyyMMdd}-%i.log.gz">
+            <ThresholdFilter level="ERROR" onMatch="ACCEPT" onMismatch="DENY" />
+            <PatternLayout pattern="${LOG_PATTERN}" charset="UTF-8" />
+            <Policies>
+                <TimeBasedTriggeringPolicy  interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="100MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="20" />
+        </RollingRandomAccessFile>
+
+        <!-- 异步多线程方式输出;bufferSize为最大的排队数量(必须为2的乘方)，默认128个;  includeLocation为是否记录位置信息 -->
+<!--        <Async name="AsyncFileInfo" bufferSize="1024" includeLocation="false">-->
+<!--            <AppenderRef ref="RollingFileInfo"/>-->
+<!--        </Async>-->
+    </Appenders>
+
+    <Loggers>
+        <!-- 设置mybatis打印sql语句的支持,name中的值为mybatis的DAO层接口包路径,注意别忘了在mybatis-config.xml中配置<setting name="logImpl" value="LOG4J2" />,否则这里不生效 -->
+        <AsyncLogger name="com.example.gateway.service.TestService2" level="INFO" additivity="false">
+            <Appender-ref ref="FILE-INFO" />
+            <Appender-ref ref="FILE-ERROR" />
+            <Appender-ref ref="Console" />
+        </AsyncLogger>
+
+        <!--过滤掉spring和mybatis的一些无用的DEBUG信息 -->
+        <Logger name="org.springframework" level="INFO"></Logger>
+        <Logger name="org.mybatis" level="INFO"></Logger>
+
+        <Root level="INFO">
+            <Appender-ref ref="Console" />
+            <Appender-ref ref="FILE-INFO" />
+            <Appender-ref ref="FILE-ERROR" />
+        </Root>
+    </Loggers>
+</configuration>
